@@ -30,6 +30,9 @@ def wget_fasta() -> None:
 
             logging.info(f"{id_} - processed")
 
+        else:
+            logging.info(f"{id_} absents, status_code {response.status_code}")
+
     df = pd.DataFrame({"identifier": heads, "class_binder": class_binders, "sequence": sequences})
     df.to_csv(path_csv, index=False)
 
