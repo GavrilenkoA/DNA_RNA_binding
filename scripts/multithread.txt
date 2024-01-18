@@ -1,0 +1,80 @@
+import logging
+import concurrent.futures
+import pandas as pd
+import requests
+from requests.adapters import HTTPAdapter
+
+def valid_sequence(sequence: str) -> bool:
+    valid_amino_acids = "SNYLRQDPMFCEWGTKIVAH"
+    return all(char in valid_amino_acids for char in sequence)
+
+def check_protein_sequence(item: str) -> None | list[str]:
+    chunks = item.split()
+
+    head = " ".join(chunks[:-1])
+    sequence = chunks[-1]
+
+    if valid_sequence(sequence):
+        return [head, sequence]
+
+def process_protein(id_, protein_fasta, logging):
+    for i in range(1, len(protein_fasta), 2):
+        protein_names.append(id_)
+        chain_heads.append(protein_fasta[i - 1])
+        sequences.append(protein_fasta[i])
+
+    logging.info(f"{id_} - processed")
+
+def fetch_data(id_):
+    url = f"https://www.rcsb.org/fasta/entry/{id_}/display"
+    response = session.get(url)
+
+    if response.status_code == 200:
+        fasta = response.text
+        fasta_data = fasta.split(">")[1:]
+        protein_fasta = []
+
+        for item in fasta_data:
+            output = check_protein_sequence(item)
+            if output is not None:
+                protein_fasta.extend(output)
+
+        return id_, protein_fasta
+
+    logging.warning(f"Failed to fetch data for {id_}")
+    return None
+
+def main():
+    input_csv = input()
+    output_file = input()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        filename=f"{output_file}.log",
+    )
+
+    df = pd.read_csv(input_csv)
+
+    global protein_names, chain_heads, sequences
+    protein_names = []
+    chain_heads = []
+    sequences = []
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(fetch_data, id_) for id_ in df["ID"].tolist()]
+
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result is not None:
+                id_, protein_fasta = result
+                process_protein(id_, protein_fasta, logging)
+
+    df = pd.DataFrame({'protein_names': protein_names, 'chain_heads': chain_heads, 'sequences': sequences})
+    df.to_csv(output_file + ".csv", index=False)
+
+if __name__ == '__main__':
+    session = requests.Session()
+    session.mount('https://', HTTPAdapter(pool_connections=5, pool_maxsize=20))
+    main()
+
