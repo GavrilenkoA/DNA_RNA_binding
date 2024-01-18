@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def parse_txt(input_txt, source_name, output_csv):
+def parse_txt(input_txt, output_csv):
     pdb_ids = []
     seqs = []
 
@@ -15,15 +15,14 @@ def parse_txt(input_txt, source_name, output_csv):
                 seqs.append(line_data[-1])
 
     class_binders = [1] * len(pdb_ids)
-    sources = [source_name] * len(pdb_ids)
 
-    df = pd.DataFrame({"identifier": pdb_ids, "class_binder": class_binders, "sequence": seqs, "source": sources})
+    df = pd.DataFrame({"identifier": pdb_ids, "class_binder": class_binders, "sequence": seqs})
+    df = df.drop_duplicates(subset=["sequence"])
     df.to_csv(output_csv, index=False)
 
 
 input_txt = input()
-source_name = input()
 output_csv = input()
 
 if __name__ == "__main__":
-    parse_txt(input_txt, source_name, output_csv)
+    parse_txt(input_txt, output_csv)
