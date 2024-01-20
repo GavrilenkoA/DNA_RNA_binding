@@ -13,18 +13,24 @@ def save_picle(obj, filename):
 
 
 def calculate_embed(seq: str) -> np.ndarray:
-    outputs = tokenizer.batch_encode_plus(
-        [list(seq)],
-        add_special_tokens=True,
-        padding=True,
-        is_split_into_words=True,
-        return_tensors="pt"
-    )
+    model.to(torch.device("cuda"))
 
+    # Encode the sequence using the tokenizer
     with torch.no_grad():
-        embeddings = model(input_ids=outputs['input_ids'], attention_mask=outputs['attention_mask'])
+        inputs = tokenizer(
+            [seq],
+            add_special_tokens=False,
+            padding=False,
+            is_split_into_words=True,
+            return_tensors="pt"
+        )
+        inputs.to(torch.device("cuda"))
 
-    embed = embeddings.last_hidden_state.mean(axis=1).view(-1).numpy()
+        embeddings = model(**inputs)
+
+    # Move the embeddings back to CPU before converting to numpy array
+    embed = embeddings.last_hidden_state.mean(axis=1).view(-1).cpu().numpy()
+
     return embed
 
 
@@ -42,7 +48,7 @@ def process_data(csv_input: str, name_data: str) -> None:
         id_, seq = item
         embed = calculate_embed(seq)
         outputs[id_] = embed
-        logging.info(f"{id_} - processed")
+        logging.info(f"{id_} - ok")
 
     save_picle(outputs, name_data)
 
