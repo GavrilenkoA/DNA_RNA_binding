@@ -8,16 +8,6 @@ def valid_sequence(sequence: str) -> bool:
     return all(char in valid_amino_acids for char in sequence)
 
 
-def check_protein_sequence(item: str) -> None | list[str]:
-    chunks = item.split()
-
-    head = " ".join(chunks[:-1])
-    sequence = chunks[-1]
-
-    if valid_sequence(sequence):
-        return [head, sequence]
-
-
 def main():
     input_csv = input()
     output_file = input()
@@ -30,34 +20,35 @@ def main():
 
     df = pd.read_csv(input_csv)
 
-    protein_names = []
-    chain_heads = []
+    identifiers = []
     sequences = []
 
-    for id_ in df["ID"].tolist():
-        url = f"https://www.rcsb.org/fasta/entry/{id_}/display"
-
+    for i, id_ in enumerate(df["ID"].tolist()):
+        url = f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot/{id_}"
         response = requests.get(url)
 
         if response.status_code == 200:
-            fasta = response.text
+            data = response.json()
 
-            fasta_data = fasta.split(">")[1:]
+            pdb_id = list(data.keys())[0]
+            uniprot_id = list(data[pdb_id]["UniProt"].keys())[0]
 
-            protein_fasta = []
-            for item in fasta_data:
-                output = check_protein_sequence(item)
-                if output is not None:
-                    protein_fasta.extend(output)
+            url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
+            response = requests.get(url)
+            if response.status_code == 200:
+                fasta_data = response.text
+                seq = "".join(fasta_data.split("\n")[1:])
+                if valid_sequence(seq):
+                    identifiers.append(uniprot_id)
+                    sequences.append(seq)
+            else:
+                logging.info(f"{uniprot_id} is not a valid UniProt")
+        else:
+            logging.info(f"{id_} doesn't map to UniProt")
 
-            for i in range(1, len(protein_fasta), 2):
-                protein_names.append(id_)
-                chain_heads.append(protein_fasta[i - 1])
-                sequences.append(protein_fasta[i])
+        logging.info(f"{i}")
 
-        logging.info(f"{id_} - processed")
-
-    df = pd.DataFrame({'protein_names': protein_names, 'chain_heads': chain_heads, 'sequences': sequences})
+    df = pd.DataFrame({'identifier': identifiers, 'sequence': sequences})
     df.to_csv(output_file + ".csv", index=False)
 
 
