@@ -20,9 +20,14 @@ As a component of the experiment, we aim to assess the generalization capabiliti
 
 
 
-1. RNA Binding Dataset
-    Coming soon ...
+2.RNA Binding Dataset 
+* Coming soon ...
 
 
 ### Notebooks
 * [Parse supplementary data and processing protein sequences](notebooks/parse_papers_data.ipynb)
+
+
+### Methods
+We depart from traditional training approaches by leveraging the pre-trained [Ankh language model](https://arxiv.org/pdf/2301.06568.pdf) to extract physico-chemical features from the primary structure of proteins. Subsequently, these features are employed to train a classification model designed for predicting binding events. The chosen classification model is a gradient boosting algorithm, 
+consisting of an ensemble of decision trees, selected for its effectiveness in capturing intricate patterns within the data.
